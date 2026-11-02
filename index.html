@@ -79,8 +79,8 @@
             overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative;
         }
 
-        .nft-preview img {
-            width: 100%; height: 100%; object-fit: cover;
+        .nft-preview svg {
+            width: 60%; height: 60%;
         }
 
         .nft-collection-badge {
@@ -120,21 +120,21 @@
     <div class="getgems-grid" id="market-display"></div>
 
     <script>
-        // БАЗА ДАННЫХ С НАДЕЖНЫМИ ССЫЛКАМИ НА СТАБИЛЬНЫЙ CDN
+        // БАЗА ДАННЫХ С НЕОНОВЫМИ КИБЕР-ВЕКТОРАМИ ДЛЯ СТОПРОЦЕНТНОЙ ЗАГРУЗКИ
         const products = {
             gifts: [
-                { name: "Magic Pumpkin", id: "#322/5000", price: 35.0, img: "https://unsplash.com", collection: "Telegram Gifts" },
-                { name: "Golden Duck", id: "#13/1000", price: 120.0, img: "https://unsplash.com", collection: "Telegram Gifts" },
-                { name: "Premium Rose", id: "#88/10000", price: 15.0, img: "https://unsplash.com", collection: "Telegram Gifts" },
-                { name: "Cyber Shield", id: "#441/2500", price: 55.0, img: "https://unsplash.com", collection: "Telegram Gifts" }
+                { name: "Magic Pumpkin", id: "#322/5000", price: 35.0, collection: "Telegram Gifts", color: "#ffaa00", icon: "🎃" },
+                { name: "Golden Duck", id: "#13/1000", price: 120.0, collection: "Telegram Gifts", color: "#ffea00", icon: "🦆" },
+                { name: "Premium Rose", id: "#88/10000", price: 15.0, collection: "Telegram Gifts", color: "#ff0055", icon: "🌹" },
+                { name: "Cyber Shield", id: "#441/2500", price: 55.0, collection: "Telegram Gifts", color: "#00f2fe", icon: "🛡️" }
             ],
             usernames: [
-                { name: "@cyber", id: "Username", price: 950.0, img: "https://unsplash.com", collection: "Telegram Usernames" },
-                { name: "@nft", id: "Username", price: 4200.0, img: "https://unsplash.com", collection: "Telegram Usernames" }
+                { name: "@cyber", id: "Username", price: 950.0, collection: "Telegram Usernames", color: "#2481cc", icon: "@" },
+                { name: "@nft", id: "Username", price: 4200.0, collection: "Telegram Usernames", color: "#00e676", icon: "💎" }
             ],
             numbers: [
-                { name: "+888 0707 7777", id: "Number", price: 340.0, img: "https://unsplash.com", collection: "Anonymous Numbers" },
-                { name: "+888 1111 2222", id: "Number", price: 890.0, img: "https://unsplash.com", collection: "Anonymous Numbers" }
+                { name: "+888 0707 7777", id: "Number", price: 340.0, collection: "Anonymous Numbers", color: "#7928ca", icon: "📱" },
+                { name: "+888 1111 2222", id: "Number", price: 890.0, collection: "Anonymous Numbers", color: "#ff0080", icon: "📟" }
             ]
         };
 
@@ -154,9 +154,12 @@
                 card.className = "nft-card";
                 card.onclick = () => buyItem(item.name, item.price);
                 
+                // Генерируем высококачественный неоновый круг с подсветкой и иконкой внутри
                 card.innerHTML = `
                     <div class="nft-preview">
-                        <img src="${item.img}" alt="${item.name}" onerror="this.style.display='none'; this.parentNode.style.background='linear-gradient(135deg, #161c2c, #0098ea22)';">
+                        <div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, ${item.color}22, ${item.color}44); border: 2px solid ${item.color}; display: flex; align-items: center; justify-content: center; font-size: 36px; box-shadow: 0 0 15px ${item.color}44;">
+                            ${item.icon}
+                        </div>
                         <span class="nft-collection-badge">${item.collection}</span>
                     </div>
                     <div class="nft-info">
