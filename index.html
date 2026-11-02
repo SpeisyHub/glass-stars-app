@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GlassStars Market</title>
+    <!-- Подключаем официальный скрипт Telegram WebApp -->
+    <script src="https://telegram.org"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #121212;
+            color: #ffffff;
+            margin: 0;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .header {
+            width: 100%;
+            text-align: center;
+            padding: 10px 0;
+            border-bottom: 2px solid #00f2fe;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            color: #00f2fe;
+            text-shadow: 0 0 10px rgba(0, 242, 254, 0.5);
+        }
+        .balance-card {
+            background: linear-gradient(135deg, #1f1f1f 0%, #2d2d2d 100%);
+            border: 1px solid #00c6ff;
+            border-radius: 15px;
+            width: 90%;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            margin-bottom: 20px;
+        }
+        .balance-amount {
+            font-size: 28px;
+            font-weight: bold;
+            color: #00f2fe;
+            margin: 5px 0;
+        }
+        .market-title {
+            align-self: flex-start;
+            font-size: 18px;
+            margin-left: 5%;
+            margin-bottom: 10px;
+            color: #aaaaaa;
+        }
+        .item-card {
+            background-color: #1e1e1e;
+            border-radius: 10px;
+            width: 90%;
+            padding: 12px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 4px solid #00f2fe;
+        }
+        .item-info h3 {
+            margin: 0 0 5px 0;
+            font-size: 16px;
+        }
+        .item-info p {
+            margin: 0;
+            font-size: 12px;
+            color: #888888;
+        }
+        .btn-buy {
+            background: linear-gradient(90deg, #00c6ff 0%, #00f2fe 100%);
+            border: none;
+            color: #121212;
+            padding: 8px 15px;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .btn-buy:active {
+            transform: scale(0.95);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1 id="user-title">GlassStars Market</h1>
+    </div>
+
+    <div class="balance-card">
+        <div>Тестовый баланс аккаунта</div>
+        <div class="balance-amount">100.00 USDT</div>
+    </div>
+
+    <div class="market-title">Доступные товары (Portals / MRKT)</div>
+
+    <!-- Пример карточки товара -->
+    <div class="item-card">
+        <div class="item-info">
+            <h3>Игровой ключ #1</h3>
+            <p>Продавец: Сделка через Гарант</p>
+        </div>
+        <button class="btn-buy" onclick="buyItem('Игровой ключ #1', 15)">15$</button>
+    </div>
+
+    <div class="item-card">
+        <div class="item-info">
+            <h3>Приватный Скрипт (Premium)</h3>
+            <p>Продавец: Авто-выдача</p>
+        </div>
+        <button class="btn-buy" onclick="buyItem('Приватный Скрипт', 45)">45$</button>
+    </div>
+
+    <script>
+        // Инициализируем Telegram WebApp API
+        const tg = window.Telegram.WebApp;
+        tg.expand(); // Разворачиваем окно на максимум
+
+        // Меняем заголовок, если имя пользователя доступно в Telegram
+        if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+            document.getElementById('user-title').innerText = `GlassStars • ${tg.initDataUnsafe.user.first_name}`;
+        }
+
+        // Функция обработки нажатия кнопки "Купить"
+        function buyItem(itemName, price) {
+            // Безопасно отправляем данные обратно в бота через встроенный метод Telegram
+            const data = {
+                action: "buy_request",
+                item: itemName,
+                cost: price
+            };
+            tg.sendData(JSON.stringify(data)); 
+            tg.close(); // Закрываем WebApp после отправки данных в чат
+        }
+    </script>
+</body>
+</html>
