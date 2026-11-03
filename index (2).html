@@ -1,0 +1,1027 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Витрина TON</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Onest:wght@400;500;600&family=Unbounded:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://unpkg.com/@tonconnect/ui@2.0.9/dist/tonconnect-ui.min.js"></script>
+<style>
+/* Layout: витрина. Крупные медиа-плитки без рамок, нижняя навигация как в Telegram,
+   карточка NFT открывается шторкой со сценой, где анимация играет на размытом фоне собственного изображения. */
+:root {
+  --bg: #0b0e13;
+  --surface: #131822;
+  --surface-2: #1b2230;
+  --line: #262f40;
+  --fg: #e9eef6;
+  --muted: #8c98ac;
+  --accent: #3db4ff;
+  --on-accent: #04111c;
+  --danger: #ff8a8a;
+  --scrim: rgba(4, 7, 12, .68);
+  --f-display: 'Unbounded', 'Onest', system-ui, sans-serif;
+  --f-body: 'Onest', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --f-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #f3f5f9; --surface: #ffffff; --surface-2: #e8edf4; --line: #d9e0ea;
+    --fg: #0e1624; --muted: #5a677b; --accent: #0a84d6; --on-accent: #ffffff;
+    --danger: #c23a3a; --scrim: rgba(14, 22, 36, .45); color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --bg: #f3f5f9; --surface: #ffffff; --surface-2: #e8edf4; --line: #d9e0ea;
+  --fg: #0e1624; --muted: #5a677b; --accent: #0a84d6; --on-accent: #ffffff;
+  --danger: #c23a3a; --scrim: rgba(14, 22, 36, .45); color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--fg);
+  font: 400 15px/1.45 var(--f-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  -webkit-tap-highlight-color: transparent;
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
+.wrap { max-width: 980px; margin: 0 auto; }
+
+/* верхняя панель */
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 14px; }
+.brand { font: 600 15px/1 var(--f-display); letter-spacing: .02em; display: flex; align-items: center; gap: 8px; }
+.brand i { font: 500 10px/1 var(--f-mono); font-style: normal; letter-spacing: .08em; color: var(--accent); border: 1px solid currentColor; border-radius: 5px; padding: 3px 5px; }
+#ton-connect { min-height: 36px; display: flex; align-items: center; }
+
+h1, h2 { font: 600 19px/1.2 var(--f-display); margin: 0; text-wrap: balance; }
+h2 { font-size: 15px; letter-spacing: .01em; }
+.sub { color: var(--muted); margin: 6px 0 0; max-width: 60ch; }
+.head { display: flex; flex-direction: column; gap: 4px; padding-block: 6px 16px; }
+.back { align-self: flex-start; background: none; border: 0; padding: 4px 0; color: var(--accent); font-weight: 500; }
+
+/* поиск */
+.search { display: flex; gap: 8px; margin-bottom: 22px; }
+.search input {
+  flex: 1; min-width: 0; height: 44px; padding: 0 14px; border-radius: 12px;
+  background: var(--surface); color: var(--fg); border: 1px solid var(--line);
+  font: 400 13px var(--f-mono);
+}
+.search input::placeholder { color: var(--muted); }
+.btn {
+  height: 44px; padding: 0 18px; border-radius: 12px; border: 0; font-weight: 600;
+  background: var(--accent); color: var(--on-accent);
+}
+.btn.ghost { background: var(--surface-2); color: var(--fg); }
+.btn:disabled { opacity: .5; cursor: default; }
+
+/* сетка */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 18px 14px; }
+.tile { all: unset; display: flex; flex-direction: column; gap: 9px; min-width: 0; cursor: pointer; }
+.tile:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 18px; }
+.media {
+  position: relative; aspect-ratio: 1; border-radius: 18px; overflow: hidden;
+  background: var(--surface-2);
+}
+.media img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .35s ease; }
+.tile:hover .media img { transform: scale(1.04); }
+.badge {
+  position: absolute; left: 8px; top: 8px; padding: 4px 8px; border-radius: 999px;
+  background: var(--scrim); color: #fff; font: 500 11px/1 var(--f-body); letter-spacing: .02em;
+  backdrop-filter: blur(6px); display: flex; align-items: center; gap: 5px;
+}
+.badge::before { content: ""; width: 0; height: 0; border-left: 7px solid currentColor; border-top: 4.5px solid transparent; border-bottom: 4.5px solid transparent; }
+.cap { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cap b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cap span { color: var(--muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cap .price { color: var(--fg); font: 500 13px var(--f-mono); }
+.cap .price em { font-style: normal; color: var(--accent); }
+
+.skel { aspect-ratio: 1; border-radius: 18px; background: linear-gradient(100deg, var(--surface) 30%, var(--surface-2) 50%, var(--surface) 70%); background-size: 300% 100%; animation: sh 1.4s linear infinite; }
+@keyframes sh { from { background-position: 100% 0; } to { background-position: 0 0; } }
+
+.more { display: flex; justify-content: center; padding-top: 22px; }
+.note { color: var(--muted); text-align: center; margin: 24px 0; }
+.note.err { color: var(--danger); }
+.empty { border: 1px dashed var(--line); border-radius: 18px; padding: 28px 20px; text-align: center; color: var(--muted); }
+.empty b { display: block; color: var(--fg); font: 600 15px var(--f-display); margin-bottom: 6px; }
+
+/* нижняя навигация */
+.tabs {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+  display: flex; justify-content: center; gap: 6px;
+  padding: 8px max(16px, env(safe-area-inset-right, 0px)) calc(8px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  background: var(--bg); border-top: 1px solid var(--line);
+}
+.tabs button {
+  flex: 1; max-width: 220px; height: 44px; border-radius: 12px; border: 0; background: none;
+  color: var(--muted); font-weight: 600;
+}
+.tabs button[aria-current="page"] { background: var(--surface-2); color: var(--fg); }
+
+/* шторка NFT */
+.sheet { position: fixed; inset: 0; z-index: 40; display: flex; align-items: flex-end; justify-content: center; }
+.sheet[hidden] { display: none; }
+.scrim { position: absolute; inset: 0; background: var(--scrim); }
+.panel {
+  position: relative; width: 100%; max-width: 520px; max-height: 94dvh; overflow-y: auto;
+  background: var(--bg); border-radius: 24px 24px 0 0;
+  padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  animation: up .28s ease;
+}
+@keyframes up { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (min-width: 700px) { .sheet { align-items: center; } .panel { border-radius: 24px; } }
+.stage { position: relative; aspect-ratio: 1; overflow: hidden; display: grid; place-items: center; background: var(--surface-2); }
+.stage .ambient { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: blur(38px) saturate(1.5); transform: scale(1.35); opacity: .75; }
+.stage .art { position: relative; width: 78%; aspect-ratio: 1; border-radius: 22px; overflow: hidden; box-shadow: 0 24px 60px rgba(0, 0, 0, .45); background: var(--surface-2); }
+.stage .art > * { width: 100%; height: 100%; object-fit: cover; display: block; }
+.close {
+  position: absolute; right: 12px; top: 12px; z-index: 2; width: 38px; height: 38px; border-radius: 50%;
+  border: 0; background: var(--scrim); color: #fff; font-size: 20px; line-height: 1; backdrop-filter: blur(6px);
+}
+.body { padding: 18px 20px 0; display: flex; flex-direction: column; gap: 16px; }
+.body h1 { font-size: 20px; }
+.kv { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0; }
+.kv div { background: var(--surface); border-radius: 12px; padding: 10px 12px; min-width: 0; }
+.kv dt { color: var(--muted); font-size: 12px; margin: 0 0 2px; }
+.kv dd { margin: 0; font-weight: 500; overflow-wrap: anywhere; }
+.line { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 13px; }
+.line code { font: 400 13px var(--f-mono); color: var(--fg); }
+.anim-note { color: var(--muted); font-size: 13px; }
+.buy { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.buy .p { font: 600 22px var(--f-display); }
+.buy .p small { font: 500 12px var(--f-mono); color: var(--accent); margin-left: 4px; }
+.buy .btn { flex: 1; max-width: 240px; }
+
+[hidden] { display: none !important; }
+
+/* подарки Telegram */
+.gm .ph { position: absolute; inset: 0; display: none; place-items: center; font: 600 22px var(--f-display); color: var(--muted); }
+.gm.broken .ph { display: grid; }
+.gm.broken img { display: none; }
+.gstage { position: relative; aspect-ratio: 1; overflow: hidden; display: grid; place-items: center; background: var(--surface-2); }
+.gstage .ambient { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: blur(38px) saturate(1.5); transform: scale(1.35); opacity: .8; }
+.gart { position: relative; width: 72%; aspect-ratio: 1; }
+.gart > * { width: 100%; height: 100%; display: block; }
+.gart.full { width: 100%; }
+.gart.full img { object-fit: cover; }
+.gtitle { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.gtitle span { color: var(--muted); font: 500 15px var(--f-mono); }
+.rows { margin: 0; display: flex; flex-direction: column; background: var(--surface); border-radius: 16px; padding: 4px 14px; }
+.rows .r { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 11px 0; border-top: 1px solid var(--line); }
+.rows .r:first-child { border-top: 0; }
+.rows dt { color: var(--muted); }
+.rows dd { margin: 0; font-weight: 500; text-align: right; overflow-wrap: anywhere; }
+.rows dd i { font: 500 11px var(--f-mono); font-style: normal; color: var(--accent); background: var(--surface-2); border-radius: 6px; padding: 2px 6px; margin-left: 8px; }
+.btn.link { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
+.bal { display: flex; align-items: center; justify-content: space-between; gap: 14px; background: var(--surface); border-radius: 18px; padding: 14px 16px; margin-bottom: 18px; }
+.bal .lbl { display: block; color: var(--muted); font-size: 13px; }
+.bal b { font: 600 22px var(--f-display); }
+.bal b small { font: 500 12px var(--f-mono); color: var(--accent); }
+.topup { padding-top: 60px; }
+.addr { font: 400 13px var(--f-mono); overflow-wrap: anywhere; background: var(--surface); border-radius: 12px; padding: 10px 12px; margin-top: 8px; user-select: all; }
+
+/* цены и кошелёк */
+.tabs button { font-size: 14px; padding: 0 4px; }
+.fiat { color: var(--muted); font: 400 12px var(--f-body); }
+.cap .price.off { color: var(--muted); font: 400 13px var(--f-body); }
+.buy .p.off { font: 500 16px var(--f-body); color: var(--muted); }
+.buy .p .fiat { display: block; margin-top: 2px; }
+.stat { color: var(--fg); font: 500 13px var(--f-mono); margin: 8px 0 0; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; }
+.actions .btn { flex: 1; min-width: 110px; }
+.bal.big b { font-size: 30px; }
+.bal .fiat { display: block; margin-top: 2px; }
+.sec { font: 600 15px var(--f-display); margin: 24px 0 10px; }
+.rows dt small { display: block; font-size: 12px; margin-top: 2px; }
+.form { display: flex; flex-direction: column; gap: 10px; }
+.form input { height: 44px; padding: 0 14px; border-radius: 12px; background: var(--surface); color: var(--fg); border: 1px solid var(--line); font: 400 13px var(--f-mono); min-width: 0; }
+.form input::placeholder { color: var(--muted); }
+
+.toast {
+  position: fixed; left: 50%; bottom: calc(92px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+  z-index: 60; max-width: min(90vw, 420px); padding: 11px 16px; border-radius: 12px;
+  background: var(--fg); color: var(--bg); font-weight: 500; font-size: 14px; text-align: center;
+}
+.toast[hidden] { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .skel, .panel { animation: none; } .media img { transition: none; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">Витрина <i>TON</i></div>
+    <div id="ton-connect"></div>
+  </header>
+  <main id="app"></main>
+</div>
+
+<nav class="tabs" aria-label="Разделы">
+  <button id="tab-market" type="button">Маркет</button>
+  <button id="tab-gifts" type="button">Подарки</button>
+  <button id="tab-mine" type="button">Мои NFT</button>
+  <button id="tab-wallet" type="button">Кошелёк</button>
+</nav>
+
+<div class="sheet" id="sheet" hidden role="dialog" aria-modal="true" aria-label="NFT">
+  <div class="scrim" id="scrim"></div>
+  <div class="panel" id="panel"></div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+/* ───────── Настройки ───────── */
+const CFG = {
+  // Для продакшена: поставьте сюда адрес своего бэкенд-прокси (ключ TonAPI в браузере виден всем).
+  API: 'https://tonapi.io/v2',
+  // Ссылка на ваше мини-приложение, чтобы кошелёк возвращал пользователя обратно: https://t.me/bot/app
+  BOT_APP_URL: '',
+  // Запас на газ при покупке. Излишек возвращается; точное значение зависит от sale-контракта.
+  GAS_RESERVE_NANO: 1000000000n,
+  PAGE: 24,
+};
+// Закреплённые коллекции (адреса сверьте на tonviewer.com). Если адрес не найден, он просто пропускается.
+const PINNED = [
+  'EQCA14o1-VWhS2efqoh_9M1b_A9DtKTuoqfmkn83AbJzwnPi', // Telegram Usernames
+  'EQAOQdwdw8kGftJCSFgOErM1mBjYPe4DBPq8-AhF6vr9si5N', // Anonymous Telegram Numbers
+  'EQAG2BH0JlmFkbMrLEnyn2bIITaOSssd4WdisE4BdFMkZbir', // TON Diamonds
+];
+
+// Коллекционные подарки Telegram (названия коллекций). Для них есть анимации и картинки на nft.fragment.com.
+const GIFT_NAMES = `Durov's Glasses|Heroic Helmets|Heart Lockets|Surge Boards|Mighty Arms|Nail Bracelets|Bling Binkies|Gem Signets|Perfume Bottles|Mini Oscars|Precious Peaches|Plush Pepes|Ionic Dryers|Ion Gems|Genie Lamps|Bonded Rings|Artisan Bricks|Astral Shards|Love Candles|Durov's Caps|Khabib's Papakhas|Magic Potions|Rare Birds|Valentine Boxes|Joyful Bundles|Sharp Tongues|Sleigh Bells|Neko Helmets|Electric Skulls|Snow Mittens|Pretty Posies|Westside Signs|Record Players|Eternal Roses|Sky Stilettos|Cupid Charms|Lush Bouquets|Holiday Drinks|Snow Globes|UFC Strikes|Bunny Muffins|Love Potions|Mad Pumpkins|Loot Bags|Hanging Stars|Low Riders|Flying Brooms|Mousse Cakes|Skull Flowers|Timeless Books|Signet Rings|Kissed Frogs|Jingle Bells|Crystal Balls|Bow Ties|Diamond Rings|Top Hats|Hypno Lollipops|Star Notepads|Vintage Cigars|Berry Boxes|Money Pots|Restless Jars|Snake Boxes|Winter Wreaths|Trapped Hearts|Happy Brownies|Pet Snakes|Tama Gadgets|Swiss Watches|Fresh Socks|Voodoo Dolls|Faith Amulets|Big Years|Spring Baskets|Spiced Wines|Santa Hats|Eternal Candles|Jester Hats|Pool Floats|Mood Packs|Liberty Figures|Moon Pendants|Cookie Hearts|Input Keys|Whip Cupcakes|Victory Medals|Sakura Flowers|Jelly Bunnies|Xmas Stockings|Jolly Chimps|Scared Cats|Hex Pots|Candy Canes|Stellar Rockets|Jacks-in-the-Box|Light Swords|Ginger Cookies|Lunar Snakes|Snoop Cigars|Clover Pins|Evil Eyes|Swag Bags|Party Sparklers|Instant Ramens|B-Day Candles|Easter Eggs|Spy Agarics|Toy Bears|Witch Hats|Desk Calendars|Homemade Cakes|Ice Creams|Chill Flames|Vice Creams|Snoop Doggs|Lol Pops`.split('|');
+const GIFT_SET = new Set(GIFT_NAMES);
+// Адреса коллекций на TON, найденные в открытых источниках (сверьте на tonviewer.com).
+// Для них доступны владельцы и цены. Остальные подарки открываются по номеру.
+const GIFT_ADDR = {
+  'Plush Pepes': 'EQBG-g6ahkAUGWpefWbx-D_9sQ8oWbvy6puuq78U2c4NUDFS',
+  "Durov's Caps": 'EQD9ikZq6xPgKjzmdBG0G0S80RvUJjbwgHrPZXDKc_wsE84w',
+  'Heart Lockets': 'EQC4XEulxb05Le5gF6esMtDWT5XZ6tlzlMBQGNsqffxpdC5U',
+  'Astral Shards': 'EQDIReleOkTxCD4g_XEm8xj0LYNg6-zMsTGAAwCA-vEbkGBu',
+};
+const SINGULAR_EXC = { "Durov's Glasses": "Durov's Glasses", 'Happy Brownies': 'Happy Brownie', 'Ginger Cookies': 'Ginger Cookie', 'Jacks-in-the-Box': 'Jack-in-the-Box', 'Big Years': 'Big Year' };
+function singularWord(w) {
+  const l = w.toLowerCase();
+  if (/(ches|shes|sses|xes)$/.test(l)) return w.slice(0, -2);
+  if (/ies$/.test(l)) return w.slice(0, -3) + 'y';
+  return l.endsWith('s') ? w.slice(0, -1) : w;
+}
+function giftSingular(name) {
+  if (SINGULAR_EXC[name]) return SINGULAR_EXC[name];
+  const p = name.split(' '); p[p.length - 1] = singularWord(p[p.length - 1]); return p.join(' ');
+}
+const giftSlug = name => giftSingular(name).toLowerCase().replace(/[^a-z0-9]/g, '');
+const giftCamel = name => giftSingular(name).replace(/[^A-Za-z0-9]/g, '');
+
+/* ───────── Утилиты ───────── */
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const tg = window.Telegram?.WebApp;
+const app = $('#app');
+const state = { tab: 'market', view: 'market', col: null, items: [], token: 0, wallet: null, collections: new Map() };
+let tcui = null;
+let anim = null;
+
+function url(u) {
+  if (!u || typeof u !== 'string') return '';
+  if (u.startsWith('ipfs://')) u = 'https://ipfs.io/ipfs/' + u.slice(7);
+  return /^https?:\/\//i.test(u) ? u : '';
+}
+function plural(n, f) { const a = Math.abs(n) % 100, b = a % 10; return a > 10 && a < 20 ? f[2] : b > 1 && b < 5 ? f[1] : b === 1 ? f[0] : f[2]; }
+function short(a) { return a ? a.slice(0, 4) + '…' + a.slice(-4) : ''; }
+function friendly(raw) { try { return TON_CONNECT_UI.toUserFriendlyAddress(raw, false); } catch { return raw; } }
+function fmtTon(v) {
+  try {
+    const n = BigInt(v), whole = n / 1000000000n, frac = (n % 1000000000n).toString().padStart(9, '0').slice(0, 2).replace(/0+$/, '');
+    if (n > 0n && whole === 0n && !frac) return '<0.01';
+    return whole.toString() + (frac ? '.' + frac : '');
+  } catch { return '—'; }
+}
+function haptic() { try { tg?.HapticFeedback?.impactOccurred('light'); } catch {} }
+let toastTimer;
+function toast(msg) {
+  const t = $('#toast'); t.textContent = msg; t.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 3200);
+}
+
+/* ───────── TonAPI ───────── */
+async function api(path, tries = 2) {
+  const r = await fetch(CFG.API + path, { headers: { Accept: 'application/json' } });
+  if (r.status === 429 && tries > 0) { await sleep(1300); return api(path, tries - 1); }
+  if (!r.ok) {
+    throw new Error(r.status === 429 ? 'TonAPI просит подождать. Повторите через несколько секунд.'
+      : r.status === 400 || r.status === 404 ? 'Адрес не найден. Проверьте, что он скопирован полностью.'
+      : 'TonAPI вернул ошибку ' + r.status + '.');
+  }
+  return r.json();
+}
+
+// Приводим ответ TonAPI к одному виду и находим анимацию.
+function findAnim(m) {
+  const list = [m.lottie, m.animation_url, m.animation, m.video, m.content_url].filter(Boolean);
+  for (const raw of list) {
+    const u = url(raw); if (!u) continue;
+    const p = u.split('?')[0].toLowerCase();
+    if (/\.(mp4|webm|mov|m4v)$/.test(p)) return { type: 'video', url: u };
+    if (/\.json$/.test(p) || p.includes('lottie')) return { type: 'lottie', url: u };
+    if (/\.(gif|apng|webp)$/.test(p)) return { type: 'img', url: u };
+  }
+  if (m.content_type?.startsWith?.('video/') && url(m.content_url)) return { type: 'video', url: url(m.content_url) };
+  return null;
+}
+function norm(it) {
+  const m = it.metadata || {}, pv = it.previews || [];
+  const pick = r => pv.find(p => p.resolution === r)?.url;
+  const image = url(pick('500x500') || pick('1500x1500') || m.image);
+  return {
+    address: it.address, index: it.index,
+    name: m.name || ('#' + it.index), description: m.description || '',
+    collection: it.collection?.name || '', image,
+    large: url(pick('1500x1500') || m.image) || image,
+    anim: findAnim(m), attrs: Array.isArray(m.attributes) ? m.attributes : [],
+    owner: it.owner?.address || '', ownerName: it.owner?.name || '',
+    sale: it.sale?.price?.value ? it.sale : null,
+    verified: !!it.approved_by?.length,
+    gift: giftInfo(it),
+  };
+}
+
+/* ───────── Представления ───────── */
+function skeletons(n) { return '<div class="skel"></div>'.repeat(n); }
+function setTab(tab) {
+  state.tab = tab;
+  for (const t of ['market', 'gifts', 'mine', 'wallet']) $('#tab-' + t).setAttribute('aria-current', tab === t ? 'page' : 'false');
+}
+function updateBack() {
+  if (!tg?.BackButton) return;
+  if (state.view === 'collection' || state.view === 'gallery') tg.BackButton.show(); else tg.BackButton.hide();
+}
+
+function renderMarket() {
+  state.view = 'market'; setTab('market'); updateBack(); window.scrollTo(0, 0);
+  const my = ++state.token;
+  app.innerHTML = `
+    <div class="head"><h1>Коллекции</h1><p class="sub">Выберите коллекцию или вставьте её адрес.</p></div>
+    <form class="search" id="colForm">
+      <input id="colAddr" placeholder="Адрес коллекции (EQ…)" autocomplete="off" spellcheck="false" aria-label="Адрес коллекции">
+      <button class="btn" type="submit">Открыть</button>
+    </form>
+    <div class="grid" id="cols">${skeletons(6)}</div>
+    <p class="note err" id="colErr" hidden></p>`;
+  $('#colForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const a = $('#colAddr').value.trim(); if (a) openCollection(a);
+  });
+  loadCollections(my);
+}
+
+async function loadCollections(my) {
+  const grid = $('#cols'); let first = true;
+  const seen = new Set();
+  const add = c => {
+    const m = c.metadata || {}, pv = c.previews || [];
+    const img = url(pv.find(p => p.resolution === '500x500')?.url || m.image);
+    if (!m.name || seen.has(c.address)) return;
+    seen.add(c.address);
+    state.collections.set(c.address, { address: c.address, name: m.name, description: m.description || '', count: c.next_item_index });
+    if (first) { grid.innerHTML = ''; first = false; }
+    grid.insertAdjacentHTML('beforeend', `
+      <button class="tile" type="button" data-col="${esc(c.address)}">
+        <div class="media">${img ? `<img src="${esc(img)}" alt="" loading="lazy">` : ''}</div>
+        <div class="cap"><b>${esc(m.name)}</b><span>${c.next_item_index != null ? c.next_item_index + ' ' + plural(c.next_item_index, ['предмет', 'предмета', 'предметов']) : ''}</span></div>
+      </button>`);
+  };
+  try {
+    for (const a of PINNED) {
+      if (my !== state.token) return;
+      try { add(await api('/nfts/collections/' + a)); } catch {}
+    }
+    const list = await api('/nfts/collections?limit=30');
+    if (my !== state.token) return;
+    (list.nft_collections || []).filter(c => c.approved_by?.length && c.metadata?.image).forEach(add);
+    if (first) throw new Error('Коллекции не загрузились.');
+  } catch (e) {
+    if (my !== state.token) return;
+    if (first) grid.innerHTML = '';
+    const el = $('#colErr'); el.hidden = false; el.textContent = e.message;
+  }
+}
+
+function itemTile(it, i) {
+  const isTon = it.sale && (!it.sale.price.token_name || it.sale.price.token_name === 'TON');
+  const price = it.sale
+    ? `<span class="price">${esc(fmtTon(it.sale.price.value))} <em>${esc(it.sale.price.token_name || 'TON')}</em></span>${isTon ? `<span class="fiat" data-nano="${esc(it.sale.price.value)}"></span>` : ''}`
+    : `<span class="price off">${it.noPrice ? 'Цена неизвестна' : 'Не продаётся'}</span>`;
+  return `
+    <button class="tile" type="button" data-i="${i}">
+      <div class="media">
+        ${it.image ? `<img src="${esc(it.image)}" alt="" loading="lazy">` : ''}
+        ${it.anim ? '<span class="badge">Анимация</span>' : ''}
+      </div>
+      <div class="cap"><b>${esc(it.name)}</b><span>${esc(it.collection)}</span>${price}</div>
+    </button>`;
+}
+
+// Общая лента с подгрузкой: используется и для коллекции, и для кошелька.
+function feed(host, fetchPage, onPage) {
+  const my = ++state.token; state.items = [];
+  let offset = 0, busy = false;
+  host.innerHTML = `<div class="grid" id="items">${skeletons(6)}</div>
+    <div class="more"><button class="btn ghost" id="more" type="button" hidden>Показать ещё</button></div>
+    <p class="note" id="msg" hidden></p>`;
+  const grid = $('#items', host), more = $('#more', host), msg = $('#msg', host);
+  async function load() {
+    if (busy) return; busy = true; more.disabled = true;
+    try {
+      const page = (await fetchPage(offset)).map(norm);
+      if (my !== state.token) return;
+      if (offset === 0) grid.innerHTML = '';
+      const start = state.items.length;
+      state.items.push(...page);
+      grid.insertAdjacentHTML('beforeend', page.map((it, k) => itemTile(it, start + k)).join(''));
+      paintFiat();
+      onPage?.(state.items);
+      offset += page.length;
+      more.hidden = page.length < CFG.PAGE;
+      if (!state.items.length) { msg.hidden = false; msg.className = 'note'; msg.textContent = 'Здесь пока нет NFT.'; }
+    } catch (e) {
+      if (my !== state.token) return;
+      if (offset === 0) grid.innerHTML = '';
+      msg.hidden = false; msg.className = 'note err'; msg.textContent = e.message;
+    } finally { busy = false; more.disabled = false; }
+  }
+  more.addEventListener('click', load);
+  load();
+}
+
+async function openCollection(addr, back = renderMarket, meta = null) {
+  state.view = 'collection'; state.back = back; updateBack(); window.scrollTo(0, 0);
+  const known = meta || state.collections.get(addr);
+  app.innerHTML = `
+    <div class="head">
+      <button class="back" id="back" type="button">${back === renderGifts ? '← Все подарки' : '← Все коллекции'}</button>
+      <h1 id="cTitle">${esc(known?.name || 'Коллекция')}</h1>
+      <p class="sub" id="cDesc">${esc(known?.description || '')}</p>
+      <p class="stat" id="cStat" hidden></p>
+    </div>
+    <div id="feed"></div>`;
+  $('#back').addEventListener('click', back);
+  if (!known) {
+    api('/nfts/collections/' + addr).then(c => {
+      if (state.view !== 'collection') return;
+      $('#cTitle').textContent = c.metadata?.name || 'Коллекция';
+      $('#cDesc').textContent = c.metadata?.description || '';
+    }).catch(() => {});
+  }
+  const onStat = items => {
+    const el = $('#cStat');
+    if (!el || !items.length) return;
+    const on = items.filter(i => i.sale && (!i.sale.price.token_name || i.sale.price.token_name === 'TON'));
+    let min = null;
+    for (const i of on) { const p = BigInt(i.sale.price.value); if (min === null || p < min) min = p; }
+    el.hidden = false;
+    el.innerHTML = on.length
+      ? `На продаже ${on.length} из ${items.length} загруженных, от ${esc(fmtTon(min))} TON <span class="fiat" data-nano="${min}"></span>`
+      : `Из ${items.length} загруженных ничего не продаётся.`;
+    paintFiat();
+  };
+  feed($('#feed'), async off => (await api(`/nfts/collections/${encodeURIComponent(addr)}/items?limit=${CFG.PAGE}&offset=${off}`)).nft_items || [], onStat);
+}
+
+function renderMine(addr) {
+  state.view = 'mine'; state.back = null; setTab('mine'); updateBack(); window.scrollTo(0, 0);
+  const val = addr || state.wallet || '';
+  app.innerHTML = `
+    <div class="head"><h1>Мои NFT</h1><p class="sub">Подключите кошелёк или вставьте любой адрес TON, чтобы посмотреть коллекцию.</p></div>
+    <form class="search" id="wForm">
+      <input id="wAddr" placeholder="Адрес кошелька" value="${esc(val)}" autocomplete="off" spellcheck="false" aria-label="Адрес кошелька">
+      <button class="btn" type="submit">Показать</button>
+    </form>
+    <div id="feed"></div>`;
+  const run = a => {
+    if (!a) { $('#feed').innerHTML = `<div class="empty"><b>Здесь появятся ваши NFT</b>Нажмите «Connect Wallet» вверху или вставьте адрес.</div>`; return; }
+    feed($('#feed'), async off => (await api(`/accounts/${encodeURIComponent(a)}/nfts?limit=${CFG.PAGE}&offset=${off}&indirect_ownership=false`)).nft_items || []);
+  };
+  $('#wForm').addEventListener('submit', e => { e.preventDefault(); run($('#wAddr').value.trim()); });
+  run(val);
+}
+
+/* ───────── Шторка NFT ───────── */
+function openSheet(it) {
+  if (it.gift) return openGiftSheet(it);
+  haptic();
+  const sheet = $('#sheet'), panel = $('#panel');
+  const attrs = it.attrs.filter(a => a && a.value != null).slice(0, 8)
+    .map(a => `<div><dt>${esc(a.trait_type || a.name || 'Свойство')}</dt><dd>${esc(a.value)}</dd></div>`).join('');
+  const canBuy = it.sale && (!it.sale.price.token_name || it.sale.price.token_name === 'TON');
+  panel.innerHTML = `
+    <div class="stage">
+      ${it.large ? `<img class="ambient" src="${esc(it.large)}" alt="">` : ''}
+      <button class="close" id="close" type="button" aria-label="Закрыть">×</button>
+      <div class="art" id="art"></div>
+    </div>
+    <div class="body">
+      <div><h1>${esc(it.name)}</h1><p class="sub">${esc(it.collection)}${it.verified ? ' · проверена' : ''}</p></div>
+      <p class="anim-note" id="animNote"></p>
+      ${it.description ? `<p class="sub" style="margin:0">${esc(it.description)}</p>` : ''}
+      ${attrs ? `<dl class="kv">${attrs}</dl>` : ''}
+      <div class="line"><span>Владелец</span><code>${esc(it.ownerName || short(friendly(it.owner)))}</code></div>
+      <div class="line"><span>Адрес NFT</span><code>${esc(short(friendly(it.address)))}</code></div>
+      ${buyBlock(it)}
+    </div>`;
+  sheet.hidden = false; document.body.style.overflow = 'hidden';
+  $('#close').addEventListener('click', closeSheet);
+  $('#buy')?.addEventListener('click', () => buy(it));
+  paintFiat();
+  mountMedia(it);
+}
+function closeSheet() {
+  try { anim?.destroy(); } catch {} anim = null;
+  $('#panel').innerHTML = ''; $('#sheet').hidden = true; document.body.style.overflow = '';
+}
+$('#scrim').addEventListener('click', closeSheet);
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#sheet').hidden) closeSheet(); });
+
+let lottiePromise;
+function loadLottie() {
+  lottiePromise ||= new Promise((ok, fail) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js';
+    s.onload = () => ok(window.lottie); s.onerror = fail; document.head.appendChild(s);
+  });
+  return lottiePromise;
+}
+function mountMedia(it) {
+  const art = $('#art'), note = $('#animNote');
+  const still = () => { art.innerHTML = it.large ? `<img src="${esc(it.large)}" alt="${esc(it.name)}">` : ''; };
+  if (!it.anim) { still(); note.textContent = 'У этого NFT нет анимации, только изображение.'; return; }
+  note.textContent = 'Анимация воспроизводится.';
+  const fail = () => { try { anim?.destroy(); } catch {} anim = null; still(); note.textContent = 'Анимацию не удалось загрузить, показано изображение.'; };
+  if (it.anim.type === 'video') {
+    art.innerHTML = `<video src="${esc(it.anim.url)}" ${it.image ? `poster="${esc(it.image)}"` : ''} autoplay loop muted playsinline controls></video>`;
+    $('video', art).addEventListener('error', fail);
+  } else if (it.anim.type === 'img') {
+    art.innerHTML = `<img src="${esc(it.anim.url)}" alt="${esc(it.name)}">`;
+    $('img', art).addEventListener('error', fail);
+  } else {
+    still();
+    loadLottie().then(L => {
+      art.innerHTML = '';
+      anim = L.loadAnimation({ container: art, renderer: 'svg', loop: true, autoplay: true, path: it.anim.url });
+      anim.addEventListener('data_failed', fail);
+      anim.addEventListener('error', fail);
+    }).catch(fail);
+  }
+}
+
+/* ───────── Цены и кошелёк ───────── */
+function fmtUnits(v, d = 9) {
+  try {
+    const dec = BigInt(Number(d) || 0), n = BigInt(v), base = 10n ** dec;
+    const f = (n % base).toString().padStart(Number(dec), '0').slice(0, 4).replace(/0+$/, '');
+    return (n / base).toLocaleString('ru-RU') + (f ? ',' + f : '');
+  } catch { return '—'; }
+}
+function toNanoStr(s) {
+  const m = /^(\d+)(?:[.,](\d{1,9}))?$/.exec(String(s).trim());
+  if (!m) return null;
+  return (BigInt(m[1]) * 1000000000n + BigInt((m[2] || '').padEnd(9, '0'))).toString();
+}
+/*END-UTIL*/
+async function loadRate() {
+  try {
+    const j = await api('/rates?tokens=ton&currencies=usd,rub');
+    const p = j.rates?.TON?.prices || {};
+    const usd = +(p.USD ?? p.usd), rub = +(p.RUB ?? p.rub);
+    if (rub || usd) state.rate = { usd: usd || 0, rub: rub || 0 };
+  } catch {}
+}
+function fiat(v) {
+  const r = state.rate; if (!r) return '';
+  try {
+    const t = Number(BigInt(v)) / 1e9, parts = [];
+    if (r.rub) { const x = t * r.rub; parts.push((x > 0 && x < 1 ? '<1' : Math.round(x).toLocaleString('ru-RU')) + ' ₽'); }
+    if (r.usd) { const u = t * r.usd; parts.push('$' + u.toLocaleString('en-US', { maximumFractionDigits: u < 10 ? 2 : 0 })); }
+    return parts.length ? '≈ ' + parts.join(' · ') : '';
+  } catch { return ''; }
+}
+function paintFiat() {
+  document.querySelectorAll('.fiat[data-nano]').forEach(el => { el.textContent = fiat(el.dataset.nano); });
+}
+function copyText(text) {
+  Promise.resolve().then(() => navigator.clipboard.writeText(text))
+    .then(() => toast('Адрес скопирован.'))
+    .catch(() => toast('Выделите адрес и скопируйте вручную.'));
+}
+
+function renderWallet() {
+  state.view = 'wallet'; state.back = null; setTab('wallet'); updateBack(); window.scrollTo(0, 0);
+  const my = ++state.token, raw = state.wallet;
+  if (!raw) {
+    app.innerHTML = `
+      <div class="head"><h1>Кошелёк</h1><p class="sub">Подключите TON-кошелёк, чтобы видеть баланс, покупать NFT и переводить TON.</p></div>
+      <div class="empty"><b>Кошелёк не подключён</b>Подключение идёт через TON Connect: Tonkeeper, Wallet в Telegram и другие кошельки.</div>
+      <div class="actions" style="margin-top:16px">
+        <button class="btn" id="wConnect" type="button">Подключить кошелёк</button>
+        <button class="btn ghost" id="topup" type="button">Купить TON</button>
+      </div>`;
+    $('#wConnect').addEventListener('click', () => (tcui ? tcui.openModal() : toast('Подключение кошелька работает после размещения на HTTPS.')));
+    return;
+  }
+  const addr = friendly(raw), enc = encodeURIComponent(raw);
+  app.innerHTML = `
+    <div class="head"><h1>Кошелёк</h1><p class="sub">Средства лежат в вашем кошельке. Приложение их не хранит и не может ими распоряжаться.</p></div>
+    <div class="bal big"><div><span class="lbl">Баланс</span><b id="balVal">…</b><span class="fiat" id="balFiat"></span></div></div>
+    <div class="actions">
+      <button class="btn" id="topup" type="button">Пополнить</button>
+      <button class="btn ghost" id="sendBtn" type="button">Отправить</button>
+      <button class="btn ghost" id="wOut" type="button">Отключить</button>
+    </div>
+    <div class="addr" id="addrFull">${esc(addr)}</div>
+    <div class="actions" style="margin-top:8px"><button class="btn ghost" id="copyAddr" type="button">Скопировать адрес</button></div>
+    <h2 class="sec">Токены</h2><dl class="rows" id="jets"><div class="r"><dt>Загрузка…</dt><dd></dd></div></dl>
+    <h2 class="sec">Последние операции</h2><dl class="rows" id="evs"><div class="r"><dt>Загрузка…</dt><dd></dd></div></dl>`;
+  $('#sendBtn').addEventListener('click', openSend);
+  $('#wOut').addEventListener('click', () => tcui?.disconnect());
+  $('#copyAddr').addEventListener('click', () => copyText(addr));
+  const alive = () => my === state.token && state.view === 'wallet';
+  (async () => {
+    try {
+      const a = await api('/accounts/' + enc);
+      if (!alive()) return;
+      $('#balVal').innerHTML = esc(fmtTon(a.balance)) + ' <small>TON</small>';
+      $('#balFiat').dataset.nano = String(a.balance);
+    } catch { if (alive()) $('#balVal').textContent = '—'; }
+    if (!state.rate) await loadRate();
+    paintFiat();
+    await sleep(300);
+    try {
+      const j = await api('/accounts/' + enc + '/jettons');
+      if (!alive()) return;
+      const list = (j.balances || []).filter(b => b.jetton && b.jetton.verification !== 'blacklist' && BigInt(b.balance || 0) > 0n).slice(0, 12);
+      $('#jets').innerHTML = list.length
+        ? list.map(b => `<div class="r"><dt>${esc(b.jetton.symbol || b.jetton.name || 'Токен')}</dt><dd>${esc(fmtUnits(b.balance, b.jetton.decimals))}</dd></div>`).join('')
+        : '<div class="r"><dt>Других токенов нет</dt><dd></dd></div>';
+    } catch { if (alive()) $('#jets').innerHTML = '<div class="r"><dt>Не удалось загрузить токены</dt><dd></dd></div>'; }
+    await sleep(300);
+    try {
+      const e = await api('/accounts/' + enc + '/events?limit=10');
+      if (!alive()) return;
+      const list = (e.events || []).filter(x => !x.is_scam).slice(0, 10);
+      $('#evs').innerHTML = list.length
+        ? list.map(ev => {
+            const p = ev.actions?.[0]?.simple_preview;
+            const d = new Date(ev.timestamp * 1000).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+            return `<div class="r"><dt>${esc(p?.description || p?.name || 'Операция')}<small>${esc(d)}</small></dt><dd>${esc(p?.value || '')}</dd></div>`;
+          }).join('')
+        : '<div class="r"><dt>Операций пока нет</dt><dd></dd></div>';
+    } catch { if (alive()) $('#evs').innerHTML = '<div class="r"><dt>Не удалось загрузить операции</dt><dd></dd></div>'; }
+  })();
+}
+
+function openSend() {
+  haptic();
+  $('#panel').innerHTML = `
+    <button class="close" id="close" type="button" aria-label="Закрыть">×</button>
+    <div class="body topup">
+      <div><h1>Отправить TON</h1><p class="sub">Кошелёк покажет сумму и комиссию, и вы подтвердите перевод уже там.</p></div>
+      <form class="form" id="sendForm">
+        <input id="sTo" placeholder="Адрес получателя" autocomplete="off" spellcheck="false" aria-label="Адрес получателя">
+        <input id="sAmt" placeholder="Сумма в TON, например 1.5" inputmode="decimal" autocomplete="off" aria-label="Сумма в TON">
+        <p class="anim-note" id="sFiat" hidden></p>
+        <p class="note err" id="sErr" hidden style="margin:0;text-align:left"></p>
+        <button class="btn" type="submit">Отправить в кошелёк</button>
+      </form>
+    </div>`;
+  $('#sheet').hidden = false; document.body.style.overflow = 'hidden';
+  $('#close').addEventListener('click', closeSheet);
+  $('#sAmt').addEventListener('input', e => {
+    const n = toNanoStr(e.target.value), el = $('#sFiat'), t = n && fiat(n);
+    el.hidden = !t; el.textContent = t || '';
+  });
+  $('#sendForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const to = $('#sTo').value.trim(), nano = toNanoStr($('#sAmt').value), err = $('#sErr');
+    const okAddr = /^[A-Za-z0-9_\-+/=]{48}$/.test(to) || /^-?\d:[0-9a-fA-F]{64}$/.test(to);
+    const msg = !okAddr ? 'Проверьте адрес получателя.' : !nano || BigInt(nano) <= 0n ? 'Введите сумму больше нуля.' : !tcui?.connected ? 'Сначала подключите кошелёк.' : '';
+    err.hidden = !msg; err.textContent = msg;
+    if (msg) return;
+    try {
+      await tcui.sendTransaction({ validUntil: Math.floor(Date.now() / 1000) + 300, messages: [{ address: to, amount: nano }] });
+      closeSheet(); toast('Отправлено. Проверьте статус в кошельке.');
+    } catch { toast('Перевод отменён.'); }
+  });
+}
+
+/* ───────── Подарки Telegram ───────── */
+function giftInfo(it) {
+  const m = it.metadata || {};
+  const hit = [m.lottie, m.image, m.content_url, m.animation_url].some(u => String(u || '').includes('nft.fragment.com/gift/'));
+  if (!hit && !GIFT_SET.has(it.collection?.name)) return null;
+  const g = /^(.*?)\s*#(\d+)\s*$/.exec(m.name || '');
+  const title = g ? g[1] : (m.name || it.collection?.name || '');
+  const num = g ? g[2] : String(it.index ?? '');
+  return { title, num, tg: title.replace(/[^A-Za-z0-9]/g, '') + '-' + num };
+}
+
+function giftTile(name) {
+  const slug = giftSlug(name), title = giftSingular(name);
+  return `
+    <button class="tile" type="button" data-gift="${esc(name)}" data-q="${esc((title + ' ' + name).toLowerCase())}">
+      <div class="media gm">
+        <img src="https://fragment.com/file/gifts/${slug}/thumb.webp" data-fb="https://nft.fragment.com/gift/${slug}-1.small.jpg" alt="" loading="lazy">
+        <span class="ph">${esc(title.charAt(0))}</span>
+      </div>
+      <div class="cap"><b>${esc(title)}</b><span>${GIFT_ADDR[name] ? 'владельцы и цены на TON' : 'просмотр по номеру'}</span></div>
+    </button>`;
+}
+
+function renderGifts() {
+  state.view = 'gifts'; state.back = null; setTab('gifts'); updateBack(); window.scrollTo(0, 0); ++state.token;
+  const names = [...GIFT_NAMES].sort((a, b) => (GIFT_ADDR[b] ? 1 : 0) - (GIFT_ADDR[a] ? 1 : 0));
+  app.innerHTML = `
+    <div class="head"><h1>Подарки</h1><p class="sub">Коллекционные подарки Telegram: ${names.length} коллекций. Откройте подарок, чтобы посмотреть его анимацию.</p></div>
+    <form class="search" id="gForm"><input id="gQ" placeholder="Найти подарок, например Plush Pepe" autocomplete="off" spellcheck="false" aria-label="Поиск подарка"></form>
+    <div class="grid" id="gifts">${names.map(giftTile).join('')}</div>
+    <p class="note" id="gNone" hidden>Такого подарка нет в списке.</p>`;
+  $('#gForm').addEventListener('submit', e => e.preventDefault());
+  $('#gQ').addEventListener('input', e => {
+    const q = e.target.value.trim().toLowerCase(); let n = 0;
+    document.querySelectorAll('#gifts [data-gift]').forEach(el => { const ok = !q || el.dataset.q.includes(q); el.hidden = !ok; if (ok) n++; });
+    $('#gNone').hidden = n > 0;
+  });
+}
+
+function openGift(name) {
+  haptic();
+  if (GIFT_ADDR[name]) return openCollection(GIFT_ADDR[name], renderGifts, { name, description: 'Подарок Telegram на блокчейне TON.' });
+  renderGallery(name);
+}
+
+// Подарки без известного адреса коллекции: листаем по номеру, картинки и анимации берём с nft.fragment.com.
+function fragmentItem(name, n) {
+  const slug = giftSlug(name), base = `https://nft.fragment.com/gift/${slug}-${n}`, title = giftSingular(name);
+  return {
+    address: '', index: n, name: `${title} #${n}`, description: '', collection: name,
+    image: base + '.medium.jpg', large: base + '.large.jpg', anim: { type: 'lottie', url: base + '.lottie.json' },
+    attrs: [], owner: '', ownerName: '', sale: null, noPrice: true, verified: false,
+    gift: { title, num: String(n), tg: giftCamel(name) + '-' + n }, detailUrl: base + '.json',
+  };
+}
+
+function renderGallery(name) {
+  state.view = 'gallery'; state.back = renderGifts; state.giftName = name; updateBack(); window.scrollTo(0, 0); ++state.token;
+  const slug = giftSlug(name), title = giftSingular(name);
+  let shown = 0;
+  app.innerHTML = `
+    <div class="head">
+      <button class="back" id="back" type="button">← Все подарки</button>
+      <h1>${esc(title)}</h1>
+      <p class="sub">Подарки по номеру. Для этой коллекции у меня нет адреса в сети TON, поэтому владельцы и цены не показываются.</p>
+    </div>
+    <form class="search" id="nForm">
+      <input id="nNum" type="number" min="1" inputmode="numeric" placeholder="Номер подарка" aria-label="Номер подарка">
+      <button class="btn" type="submit">Открыть</button>
+    </form>
+    <div class="grid" id="nums"></div>
+    <div class="more"><button class="btn ghost" id="moreN" type="button">Показать ещё</button></div>`;
+  $('#back').addEventListener('click', renderGifts);
+  const grid = $('#nums');
+  const add = () => {
+    let h = '';
+    for (let k = 0; k < CFG.PAGE; k++) {
+      const n = ++shown, base = `https://nft.fragment.com/gift/${slug}-${n}`;
+      h += `
+        <button class="tile" type="button" data-num="${n}">
+          <div class="media gm"><img src="${base}.medium.jpg" data-fb="${base}.small.jpg" alt="" loading="lazy"><span class="ph">#${n}</span></div>
+          <div class="cap"><b>${esc(title)}</b><span>#${n}</span></div>
+        </button>`;
+    }
+    grid.insertAdjacentHTML('beforeend', h);
+  };
+  add();
+  $('#moreN').addEventListener('click', add);
+  $('#nForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const n = parseInt($('#nNum').value, 10);
+    if (n > 0) openSheet(fragmentItem(name, n));
+  });
+}
+
+const TRAIT_RU = { Model: 'Модель', Backdrop: 'Фон', Symbol: 'Символ' };
+function rar(v) {
+  const s = String(v);
+  const m = /^(.*?)\s*\(?\s*(\d+(?:[.,]\d+)?)\s*(%|‰)\)?\s*$/.exec(s);
+  return m ? { v: m[1], r: m[2].replace(',', '.') + m[3] } : { v: s, r: '' };
+}
+function giftRows(it) {
+  const order = ['Model', 'Backdrop', 'Symbol'];
+  const key = a => String(a.trait_type || a.name || '');
+  const list = it.attrs.filter(a => a && a.value != null).sort((a, b) => {
+    const x = order.indexOf(key(a)), y = order.indexOf(key(b)); return (x < 0 ? 9 : x) - (y < 0 ? 9 : y);
+  });
+  const rows = [];
+  const owner = it.ownerName || (it.owner ? short(friendly(it.owner)) : '');
+  if (owner) rows.push(['Владелец', esc(owner)]);
+  for (const a of list) {
+    const { v, r } = rar(a.value);
+    rows.push([TRAIT_RU[key(a)] || key(a) || 'Свойство', esc(v) + (r ? `<i>${esc(r)}</i>` : '')]);
+  }
+  if (!rows.length) rows.push(['Свойства', 'нет данных']);
+  return rows.map(([k, v]) => `<div class="r"><dt>${esc(k)}</dt><dd>${v}</dd></div>`).join('');
+}
+
+// Приблизительные цвета фона берём из углов и середины картинки подарка, как градиент в Telegram.
+function sampleColors(u) {
+  return new Promise(res => {
+    if (!u) return res(null);
+    const im = new Image(); im.crossOrigin = 'anonymous';
+    const t = setTimeout(() => res(null), 3000);
+    im.onload = () => {
+      clearTimeout(t);
+      try {
+        const c = document.createElement('canvas'); c.width = c.height = 24;
+        const x = c.getContext('2d'); x.drawImage(im, 0, 0, 24, 24);
+        const avg = pts => {
+          let r = 0, g = 0, b = 0;
+          for (const [a, d] of pts) { const p = x.getImageData(a, d, 1, 1).data; r += p[0]; g += p[1]; b += p[2]; }
+          return [r / pts.length | 0, g / pts.length | 0, b / pts.length | 0];
+        };
+        res({ edge: avg([[1, 1], [22, 1], [1, 22], [22, 22]]), mid: avg([[12, 3], [3, 12], [20, 12], [12, 20]]) });
+      } catch { res(null); }
+    };
+    im.onerror = () => { clearTimeout(t); res(null); };
+    im.src = u;
+  });
+}
+
+function buyBlock(it) {
+  if (!it.sale) {
+    return it.noPrice
+      ? '<div class="buy"><div class="p off">Цена неизвестна</div></div><p class="anim-note">Для этой коллекции в приложении нет адреса в сети TON, поэтому цены и владельца показать нельзя.</p>'
+      : '<div class="buy"><div class="p off">Не продаётся</div></div>';
+  }
+  const ton = !it.sale.price.token_name || it.sale.price.token_name === 'TON';
+  return `<div class="buy"><div class="p">${esc(fmtTon(it.sale.price.value))}<small>${esc(it.sale.price.token_name || 'TON')}</small>${ton ? `<span class="fiat" data-nano="${esc(it.sale.price.value)}"></span>` : ''}</div>
+    ${ton ? '<button class="btn" id="buy" type="button">Купить</button>' : ''}</div>`;
+}
+
+function openGiftSheet(it) {
+  haptic();
+  const g = it.gift, panel = $('#panel');
+  const tgUrl = /^[A-Za-z0-9]+-\d+$/.test(g.tg) ? 'https://t.me/nft/' + g.tg : '';
+  panel.innerHTML = `
+    <div class="gstage" id="gstage">
+      <button class="close" id="close" type="button" aria-label="Закрыть">×</button>
+      <div class="gart" id="art"></div>
+    </div>
+    <div class="body">
+      <div class="gtitle"><h1>${esc(g.title)}</h1><span>#${esc(g.num)}</span></div>
+      <dl class="rows" id="rows">${giftRows(it)}</dl>
+      ${buyBlock(it)}
+      ${tgUrl ? `<a class="btn ghost link" id="openTg" href="${esc(tgUrl)}" target="_blank" rel="noopener">Открыть в Telegram</a>` : ''}
+    </div>`;
+  $('#sheet').hidden = false; document.body.style.overflow = 'hidden';
+  $('#close').addEventListener('click', closeSheet);
+  $('#buy')?.addEventListener('click', () => buy(it));
+  $('#openTg')?.addEventListener('click', e => { if (tg?.openTelegramLink) { e.preventDefault(); tg.openTelegramLink(tgUrl); } });
+  paintFiat();
+  mountGift(it);
+  if (it.detailUrl) {
+    const st = $('#gstage');
+    fetch(it.detailUrl).then(r => (r.ok ? r.json() : null)).then(j => {
+      if (!j || !st.isConnected) return;
+      let a = j.attributes;
+      if (a && !Array.isArray(a) && typeof a === 'object') a = Object.entries(a).map(([k, v]) => ({ trait_type: k, value: v }));
+      if (!Array.isArray(a) || !a.length) return;
+      it.attrs = a; $('#rows').innerHTML = giftRows(it);
+    }).catch(() => {});
+  }
+}
+
+function mountGift(it) {
+  const stage = $('#gstage'), art = $('#art');
+  sampleColors(it.image || it.large).then(col => {
+    if (!stage.isConnected) return;
+    if (col) stage.style.background = `radial-gradient(circle at 50% 38%, rgb(${col.mid}) 0%, rgb(${col.edge}) 88%)`;
+    else if (it.large) stage.insertAdjacentHTML('afterbegin', `<img class="ambient" src="${esc(it.large)}" alt="">`);
+  });
+  const still = () => {
+    try { anim?.destroy(); } catch {} anim = null;
+    art.className = 'gart full';
+    art.innerHTML = it.large ? `<img src="${esc(it.large)}" alt="${esc(it.name)}">` : '';
+  };
+  const a = it.anim;
+  if (!a) return still();
+  if (a.type === 'video') {
+    art.innerHTML = `<video src="${esc(a.url)}" autoplay loop muted playsinline controls></video>`;
+    $('video', art).addEventListener('error', still);
+  } else if (a.type === 'img') {
+    art.innerHTML = `<img src="${esc(a.url)}" alt="${esc(it.name)}">`;
+    $('img', art).addEventListener('error', still);
+  } else {
+    loadLottie().then(L => {
+      if (!stage.isConnected) return;
+      anim = L.loadAnimation({ container: art, renderer: 'svg', loop: true, autoplay: true, path: a.url });
+      anim.addEventListener('data_failed', still);
+      anim.addEventListener('error', still);
+    }).catch(still);
+  }
+}
+
+/* ───────── Пополнение ───────── */
+function openTopup() {
+  haptic();
+  const addr = state.wallet ? friendly(state.wallet) : '';
+  $('#panel').innerHTML = `
+    <button class="close" id="close" type="button" aria-label="Закрыть">×</button>
+    <div class="body topup">
+      <div><h1>Пополнить TON</h1><p class="sub">Купите TON в Tonkeeper. Они придут на ваш кошелёк, и их можно потратить в этом приложении.</p></div>
+      <a class="btn link" id="tkBuy" href="https://app.tonkeeper.com/buy-ton" target="_blank" rel="noopener">Купить TON в Tonkeeper</a>
+      <p class="anim-note">Способы оплаты (в том числе СБП), курс и комиссию определяют Tonkeeper и его платёжные партнёры. В вашем регионе набор способов может отличаться. Это приложение платежи не принимает и не обрабатывает.</p>
+      ${addr
+        ? `<div><div class="line"><span>Ваш адрес для перевода с биржи</span></div><div class="addr" id="addrFull">${esc(addr)}</div></div>
+           <button class="btn ghost" id="copyAddr" type="button">Скопировать адрес</button>`
+        : '<p class="anim-note">Подключите кошелёк, чтобы увидеть адрес для перевода с биржи.</p>'}
+    </div>`;
+  $('#sheet').hidden = false; document.body.style.overflow = 'hidden';
+  $('#close').addEventListener('click', closeSheet);
+  $('#tkBuy').addEventListener('click', e => { if (tg?.openLink) { e.preventDefault(); tg.openLink(e.currentTarget.href); } });
+  $('#copyAddr')?.addEventListener('click', () => {
+    Promise.resolve().then(() => navigator.clipboard.writeText(addr))
+      .then(() => toast('Адрес скопирован.'))
+      .catch(() => toast('Выделите адрес и скопируйте вручную.'));
+  });
+}
+
+/* ───────── Покупка через TON Connect ───────── */
+async function buy(it) {
+  if (!tcui) return toast('Подключение кошелька работает после размещения на HTTPS.');
+  if (!tcui.connected) return tcui.openModal();
+  try {
+    await tcui.sendTransaction({
+      validUntil: Math.floor(Date.now() / 1000) + 300,
+      messages: [{
+        address: friendly(it.sale.address),
+        amount: (BigInt(it.sale.price.value) + CFG.GAS_RESERVE_NANO).toString(),
+      }],
+    });
+    toast('Отправлено. Проверьте статус покупки в кошельке.');
+  } catch { toast('Покупка отменена.'); }
+}
+
+function initWallet() {
+  const root = $('#ton-connect');
+  if (!/^https?:$/.test(location.protocol) || !window.TON_CONNECT_UI) {
+    root.innerHTML = '<button class="btn ghost" type="button" style="height:36px">Кошелёк</button>';
+    root.firstChild.addEventListener('click', () => toast('Подключение кошелька работает после размещения на HTTPS.'));
+    return;
+  }
+  const opts = { manifestUrl: new URL('tonconnect-manifest.json', location.href).href, buttonRootId: 'ton-connect' };
+  if (CFG.BOT_APP_URL) opts.actionsConfiguration = { twaReturnUrl: CFG.BOT_APP_URL };
+  tcui = new TON_CONNECT_UI.TonConnectUI(opts);
+  tcui.onStatusChange(w => {
+    state.wallet = w?.account?.address || null;
+    if (state.view === 'mine') renderMine(state.wallet);
+    else if (state.view === 'wallet') renderWallet();
+  });
+}
+
+/* ───────── Запуск ───────── */
+function applyTheme() { if (tg?.colorScheme) document.documentElement.dataset.theme = tg.colorScheme; }
+if (tg) {
+  try { tg.ready(); tg.expand(); applyTheme(); tg.onEvent('themeChanged', applyTheme); tg.BackButton.onClick(() => (state.back || renderMarket)()); } catch {}
+}
+$('#tab-market').addEventListener('click', () => { haptic(); renderMarket(); });
+$('#tab-gifts').addEventListener('click', () => { haptic(); renderGifts(); });
+$('#tab-mine').addEventListener('click', () => { haptic(); renderMine(); });
+$('#tab-wallet').addEventListener('click', () => { haptic(); renderWallet(); });
+app.addEventListener('click', e => {
+  const c = e.target.closest('[data-col]'); if (c) { haptic(); return openCollection(c.dataset.col); }
+  const t = e.target.closest('[data-i]'); if (t) return openSheet(state.items[+t.dataset.i]);
+  const g = e.target.closest('[data-gift]'); if (g) return openGift(g.dataset.gift);
+  const n = e.target.closest('[data-num]'); if (n) return openSheet(fragmentItem(state.giftName, +n.dataset.num));
+  if (e.target.closest('#topup')) openTopup();
+});
+// Если картинка подарка не загрузилась: пробуем запасной адрес, потом показываем заглушку.
+document.addEventListener('error', e => {
+  const im = e.target;
+  if (!(im instanceof HTMLImageElement) || !im.closest('.gm')) return;
+  if (im.dataset.fb) { const f = im.dataset.fb; delete im.dataset.fb; im.src = f; } else im.closest('.gm').classList.add('broken');
+}, true);
+initWallet();
+renderMarket();
+setTimeout(() => loadRate().then(paintFiat), 1500);
+</script>
+</body>
+</html>
